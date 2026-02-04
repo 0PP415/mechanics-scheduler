@@ -1,15 +1,17 @@
 "use client";
 
-import React from "react";
-import { X, Trash2, Calendar, Clock, User, FileText } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { format, parseISO } from "date-fns";
+import { ko } from "date-fns/locale";
+import { X, Calendar, Clock, User, Trash2, Quote } from "lucide-react";
 import { Reservation } from "@/types";
-import { useDeleteReservation } from "@/hooks/useReservations"; // Mutation Hook
+import { useDeleteReservation } from "@/hooks/useReservations";
 
 interface ReservationDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   reservation: Reservation;
-  onDeleteSuccess: () => void; // 모달 닫기용
+  onDeleteSuccess: () => void;
 }
 
 export default function ReservationDetailModal({
@@ -18,93 +20,137 @@ export default function ReservationDetailModal({
   reservation,
   onDeleteSuccess,
 }: ReservationDetailModalProps) {
-  // React Query Mutation Hook
+  const [isVisible, setIsVisible] = useState(false);
   const deleteMutation = useDeleteReservation();
 
-  const handleDelete = () => {
-    if (
-      !window.confirm(`'${reservation.user_name}'님의 예약을 삭제하시겠습니까?`)
-    ) {
-      return;
-    }
+  useEffect(() => {
+    if (isOpen) setIsVisible(true);
+    else setTimeout(() => setIsVisible(false), 200);
+  }, [isOpen]);
 
-    // Mutation 실행
-    deleteMutation.mutate(reservation.id, {
-      onSuccess: () => {
-        onDeleteSuccess(); // 부모 컴포넌트의 닫기 로직
-        onClose();
-      },
-    });
+  if (!isVisible && !isOpen) return null;
+
+  const handleDelete = () => {
+    if (confirm("정말로 이 예약을 삭제하시겠습니까?")) {
+      deleteMutation.mutate(reservation.id, {
+        onSuccess: () => {
+          onDeleteSuccess();
+          onClose();
+        },
+      });
+    }
   };
 
-  if (!isOpen) return null;
+  // 날짜 포맷팅 (예: 2024년 2월 4일 (수))
+  const formattedDate = format(
+    parseISO(reservation.date),
+    "yyyy년 M월 d일 (eee)",
+    {
+      locale: ko,
+    }
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#1E1E1E] w-full max-w-sm rounded-xl border border-gray-700 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="bg-[#252525] px-5 py-4 flex items-center justify-between border-b border-gray-700">
-          <h2 className="text-lg font-bold text-gray-100">예약 상세</h2>
+    <div
+      className={`
+        fixed inset-0 z-50 flex items-center justify-center p-4 
+        transition-colors duration-200
+        ${
+          isOpen
+            ? "bg-black/70 backdrop-blur-sm"
+            : "bg-transparent pointer-events-none"
+        }
+      `}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`
+          bg-[#1E1E1E] w-full max-w-sm md:max-w-md rounded-2xl shadow-2xl overflow-hidden border border-gray-700
+          transform transition-all duration-300 ease-out
+          ${
+            isOpen
+              ? "scale-100 opacity-100 translate-y-0"
+              : "scale-95 opacity-0 translate-y-4"
+          }
+        `}
+      >
+        {/* 상단 닫기 버튼 영역 */}
+        <div className="flex justify-between items-center px-6 pt-6">
+          <span className="pl-2 text-sm font-bold text-blue-500 tracking-wider">
+            예약 상세내용
+          </span>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition"
+            className="text-gray-400 hover:text-white transition-colors bg-gray-800/50 p-1 rounded-full hover:bg-gray-700"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-              <Calendar className="w-3 h-3" /> 날짜
-            </p>
-            <p className="text-gray-200">{reservation.date}</p>
+        <div className="p-6 pt-2 space-y-4">
+          {/* 1. 예약 목적 (주인공 - 가장 크게) */}
+          <div className="space-y-2">
+            <h2 className="pl-2 text-3xl md:text-4xl font-bold text-white leading-tight break-keep">
+              {reservation.purpose}
+            </h2>
           </div>
 
-          <div className="space-y-1">
-            <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-              <Clock className="w-3 h-3" /> 시간
-            </p>
-            <p className="text-gray-200 font-mono text-lg font-bold">
-              {reservation.start_time.slice(0, 5)} ~{" "}
-              {reservation.end_time.slice(0, 5)}
-            </p>
-          </div>
+          {/* 2. 상세 정보 카드 (날짜/시간/예약자) */}
+          <div className="bg-[#252525] rounded-xl p-5 border border-gray-800 space-y-4">
+            {/* 날짜 & 시간 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-gray-200">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <Calendar className="w-5 h-5 text-blue-500" />
+                </div>
+                <span className="text-lg font-medium">{formattedDate}</span>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-2">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-                <User className="w-3 h-3" /> 예약자
-              </p>
-              <p className="text-blue-400 font-bold">{reservation.user_name}</p>
+              <div className="flex items-center gap-3 text-gray-200">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <Clock className="w-5 h-5 text-blue-500" />
+                </div>
+                <span className="text-lg font-medium font-mono">
+                  {reservation.start_time.slice(0, 5)} ~{" "}
+                  {reservation.end_time.slice(0, 5)}
+                </span>
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-                <FileText className="w-3 h-3" /> 예약 목적
-              </p>
-              <p className="text-gray-300 text-sm">{reservation.purpose}</p>
+
+            {/* 구분선 */}
+            <div className="h-px bg-gray-700/50 my-4" />
+
+            {/* 예약자 */}
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-500/10 rounded-lg">
+                <User className="w-5 h-5 text-purple-400" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs text-gray-500 font-medium">
+                  예약자
+                </span>
+                <span className="text-base text-gray-200 font-bold">
+                  {reservation.user_name}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="p-4 bg-[#252525] flex gap-3 border-t border-gray-700">
+          {/* 하단 삭제 버튼 */}
           <button
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
-            className="flex-1 py-2.5 bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900/50 rounded-lg font-medium transition flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-xl border border-red-900/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 flex items-center justify-center gap-2 transition-all group"
           >
             {deleteMutation.isPending ? (
-              "삭제 중..."
+              <span className="text-sm font-medium">삭제 중...</span>
             ) : (
               <>
-                <Trash2 className="w-4 h-4" /> 예약 취소
+                <Trash2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                <span className="font-bold">예약 삭제하기</span>
               </>
             )}
-          </button>
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg font-medium transition"
-          >
-            닫기
           </button>
         </div>
       </div>
