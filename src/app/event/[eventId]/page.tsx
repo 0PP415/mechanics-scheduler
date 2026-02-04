@@ -1,6 +1,7 @@
 // app/event/[id]/page.tsx
 
 import EnsembleInfoSection from "@/components/ensemble/ensemble_info_section";
+import BackToMainButton from "@/components/common/BackToMainButton";
 
 export default function EventDetailPage({
     params,
@@ -30,6 +31,7 @@ export default function EventDetailPage({
   return (
     <main className="mx-auto max-w-3xl p-6">
       <EnsembleInfoSection ensemble={ensemble} participants={participants} />
+      <BackToMainButton />
     </main>
   );
 }

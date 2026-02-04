@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import type { Ensemble, Participant } from "@/types/ensemble_detail";
+import BackToMainButton from "../common/BackToMainButton";
 
 type Props = {
   ensemble: Ensemble;
