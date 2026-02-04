@@ -1,4 +1,4 @@
-// src/components/ensemble/ensemble_info_section.tsx
+// src/components/ensemble/ensembleInfoSection.tsx
 "use client"
 
 import { useState, useEffect, useMemo } from "react";
@@ -70,6 +70,7 @@ function get_instrument_icon(instrument?: string) {
 }
 
 export default function EnsembleInfoSection({ ensemble, participants }: Props) {
+
   useEffect(() => {
     // 1. 현재 body의 스타일을 백업 (나갈 때 복구하기 위해)
     const originalStyle = window.getComputedStyle(document.body).backgroundColor;
@@ -86,14 +87,13 @@ export default function EnsembleInfoSection({ ensemble, participants }: Props) {
     };
   }, []);
 
-  const storage_key = useMemo(() => make_storage_key(ensemble.id), [ensemble.id]);
+  // const storage_key = useMemo(() => make_storage_key(ensemble.id), [ensemble.id]);
 
   // 최초 로드
   const [comments, set_comments] = useState<LocalComment[]>(() => {
     if (typeof window === "undefined") return [];
     return load_comments(ensemble.id);
   });
-  
   const [comment_text, set_comment_text] = useState("");
 
   // 변경 시 저장 (옵션)
