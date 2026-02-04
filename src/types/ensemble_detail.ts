@@ -20,7 +20,7 @@ export type Ensemble = {
 
 export type Participant = {
     id: string; // userId
-    eventId: string;
+    event_id: string;
     name: string;
     instrument?: string; // "Guitar", "Bass", "Drums" 등
 };
@@ -28,9 +28,9 @@ export type Participant = {
 
 export type Comment = {
   id: string;
-  eventId: string;
-  // authorId: string;        // 가짜로그인 userId
-  // authorName: string;      // 표시용
+  event_id: string;
+  // author_id: string;        // 가짜로그인 userId
+  // author_name: string;      // 표시용
   content: string;
-  createdAt: string;
+  created_at: string;
 };
