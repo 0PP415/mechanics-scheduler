@@ -1,6 +1,6 @@
 // app/event/[id]/page.tsx
 
-import EnsembleInfoSection from "@/components/ensemble/ensemble_info_section";
+import EnsembleInfoSection from "@/components/ensemble/EnsembleInfoSection";
 import BackToMainButton from "@/components/common/BackToMainButton";
 
 export default function EventDetailPage({
