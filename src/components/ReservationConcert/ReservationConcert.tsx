@@ -1,9 +1,14 @@
-// src/compononets/ReservationConcert/ReservationConcert.tsx
-
+// src/components/ReservationConcert/ReservationConcert.tsx
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { timeToMinutes } from "@/utils/date";
+
+import { useQueryClient } from "@tanstack/react-query";
+import { addLocalConcert } from "@/mocks/local_concert_store";
+import type { Concert } from "@/types/concert_detail";
+
 import { Clock, Check, Plus, Trash2, MapPin, Music, LogOut } from "lucide-react";
 import {
   startOfMonth,
@@ -24,28 +29,26 @@ type SetListDraftItem = {
 };
 
 export default function ConcertCreate() {
+  const router = useRouter();
+  const queryClient = useQueryClient(); // ✅ 훅은 컴포넌트 안에서만
+
   const [concertTitle, setConcertTitle] = useState("");
-  const [location, setLocation] = useState("");
+  const [venue, setVenue] = useState(""); // ✅ location 대신 venue
 
   const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
-
-  // ✅ 하루만 선택
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
 
-  // ✅ 셋리스트 draft
   const [setList, setSetList] = useState<SetListDraftItem[]>([
     { id: crypto.randomUUID(), title: "", note: "" },
   ]);
 
-  // hydration 에러 방지
   useEffect(() => {
     setCurrentMonth(new Date());
   }, []);
 
-  // 시간 옵션
   const timeOptions = useMemo(() => {
     const times: string[] = [];
     for (let h = 9; h < 24; h++) {
@@ -61,11 +64,10 @@ export default function ConcertCreate() {
   const canSubmit =
     concertTitle.trim() !== "" &&
     !!selectedDate &&
-    location.trim() !== "" &&
+    venue.trim() !== "" &&
     isTimeRangeValid &&
-    setList.some((x) => x.title.trim() !== ""); // 곡 하나라도 있으면 OK
+    setList.some((x) => x.title.trim() !== "");
 
-  // 날짜 렌더
   const days = ["일", "월", "화", "수", "목", "금", "토"];
   const dates = useMemo(() => {
     if (!currentMonth) return [];
@@ -75,7 +77,6 @@ export default function ConcertCreate() {
   }, [currentMonth]);
 
   const handlePickDate = (dateStr: string) => {
-    // ✅ 하루만 선택되도록 토글
     setSelectedDate((prev) => (prev === dateStr ? null : dateStr));
   };
 
@@ -91,53 +92,58 @@ export default function ConcertCreate() {
     setSetList((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   };
 
+  // ✅ 하나만 남기고: localStorage 저장 + 메인 invalidate
   const handleCreateConcert = () => {
     if (!canSubmit) return;
 
-    const payload = {
+    const now = new Date().toISOString();
+
+    const newConcert: Concert = {
+      id: `concert_${crypto.randomUUID()}`,
       title: concertTitle.trim(),
-      date: selectedDate!, // ✅ 하루
-      location: location.trim(),
+      date: selectedDate!, // canSubmit이 보장
       start_time: startTime,
       end_time: endTime,
-      setList: setList
-        .filter((x) => x.title.trim() !== "")
-        .map((x, idx) => ({
-          id: x.id,
-          order: idx + 1,
-          title: x.title.trim(),
-          note: x.note?.trim() || undefined,
-        })),
+      location: venue.trim(),
+      created_at: now,
+      updated_at: now,
     };
 
-    sessionStorage.setItem("concertDraft", JSON.stringify(payload));
-    // TODO: 다음 단계 라우팅/토스트 등 연결
-    console.log("concertDraft saved:", payload);
+    addLocalConcert(newConcert);
+
+    // ✅ 메인 캘린더/리스트 즉시 반영
+    queryClient.invalidateQueries({ queryKey: ["reservations"] });
+
+    // (선택) 입력 초기화
+    // setConcertTitle("");
+    // setVenue("");
+    // setSelectedDate(null);
+    // setStartTime("");
+    // setEndTime("");
+    // setSetList([{ id: crypto.randomUUID(), title: "", note: "" }]);
+
+    router.push("/");
   };
 
   if (!currentMonth) return <div className="text-gray-500">로딩 중...</div>;
 
   return (
     <div className="min-h-screen bg-[#0d1117] flex flex-col items-center p-6 text-[#c9d1d9] font-sans">
-      {/* 헤더 */}
       <header className="w-full max-w-xl mb-8 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-violet-500/20 ring-1 ring-white/10"></div>
-          <span className="text-xl font-bold tracking-tight text-white/90">
-            BandMeet
-          </span>
+          <span className="text-xl font-bold tracking-tight text-white/90">BandMeet</span>
         </div>
         <div className="flex items-center gap-3">
-            <button className="flex items-center gap-1.5 rounded-full border border-gray-700 bg-[#1a1a1a] px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors">
-              <LogOut size={14} />
-              <span>로그아웃</span>
-            </button>
-            <div className="h-9 w-9 rounded-full bg-gray-700 border border-gray-600" />
-          </div>
-        </header>
+          <button className="flex items-center gap-1.5 rounded-full border border-gray-700 bg-[#1a1a1a] px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-white transition-colors">
+            <LogOut size={14} />
+            <span>로그아웃</span>
+          </button>
+          <div className="h-9 w-9 rounded-full bg-gray-700 border border-gray-600" />
+        </div>
+      </header>
 
       <main className="w-full max-w-2xl bg-[#0d1117] rounded-3xl">
-        {/* 공연 제목 */}
         <div className="mb-8 text-center">
           <input
             type="text"
@@ -149,7 +155,6 @@ export default function ConcertCreate() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {/* 날짜 선택(하루) */}
           <section>
             <h3 className="text-lg font-semibold mb-6 text-center text-[#f0f6fc]">날짜 선택</h3>
             <div className="bg-[#161b22] border border-[#30363d] rounded-3xl p-6 shadow-xl">
@@ -175,7 +180,7 @@ export default function ConcertCreate() {
 
               <div className="grid grid-cols-7 gap-2 text-center text-xs">
                 {dates.map((date) => {
-                  const dateStr = date.toISOString().slice(0, 10);
+                  const dateStr = format(date, "yyyy-MM-dd");
                   const selected = selectedDate === dateStr;
                   const isCur = isSameMonth(date, currentMonth);
 
@@ -199,15 +204,12 @@ export default function ConcertCreate() {
               </div>
 
               <div className="mt-4 text-xs text-gray-400">
-                선택된 날짜:{" "}
-                <span className="text-white/90 font-mono">{selectedDate ?? "없음"}</span>
+                선택된 날짜: <span className="text-white/90 font-mono">{selectedDate ?? "없음"}</span>
               </div>
             </div>
           </section>
 
-          {/* 장소 + 시간 + 셋리스트 */}
           <section className="space-y-6">
-            {/* 장소 */}
             <div>
               <h3 className="text-lg font-semibold mb-3 text-center text-[#f0f6fc]">장소</h3>
               <div className="bg-[#161b22] border border-[#30363d] rounded-3xl p-6">
@@ -216,15 +218,14 @@ export default function ConcertCreate() {
                   <span className="text-xs font-bold text-gray-400 uppercase">Location</span>
                 </div>
                 <input
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  value={venue}
+                  onChange={(e) => setVenue(e.target.value)}
                   placeholder="예: The Vinyl Underground"
                   className="w-full p-3 rounded-xl border border-[#30363d] bg-[#0d1117] text-[#f0f6fc] focus:ring-2 focus:ring-[#58a6ff] outline-none"
                 />
               </div>
             </div>
 
-            {/* 시간 */}
             <div>
               <h3 className="text-lg font-semibold mb-3 text-center text-[#f0f6fc]">시간</h3>
               <div className="bg-[#161b22] border border-[#30363d] rounded-3xl p-6 space-y-4">
@@ -276,7 +277,7 @@ export default function ConcertCreate() {
               </div>
             </div>
 
-            {/* 셋리스트 */}
+            {/* 셋리스트 UI는 그대로 유지 (저장에는 아직 반영 안 함) */}
             <div>
               <h3 className="text-lg font-semibold mb-3 text-center text-[#f0f6fc]">셋리스트</h3>
               <div className="bg-[#161b22] border border-[#30363d] rounded-3xl p-6">
@@ -335,14 +336,17 @@ export default function ConcertCreate() {
               </div>
             </div>
 
-            {/* 생성 버튼 */}
             <div className="mt-2 flex gap-3">
               <button
                 type="button"
                 onClick={handleCreateConcert}
                 disabled={!canSubmit}
                 className={`flex-1 py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-lg shadow-blue-900/20
-                  ${!canSubmit ? "bg-blue-900/50 text-blue-200/50 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 text-white"}`}
+                  ${
+                    !canSubmit
+                      ? "bg-blue-900/50 text-blue-200/50 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-500 text-white"
+                  }`}
               >
                 <Check className="w-5 h-5" />
                 공연 생성

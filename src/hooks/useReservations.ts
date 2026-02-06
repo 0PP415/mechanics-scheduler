@@ -5,6 +5,7 @@ import { formatToDbDate } from "@/utils/date";
 import { mockEvents, mockConcert } from "@/mocks/events_mock"; 
 import type { Ensemble } from "@/types/ensemble_detail";
 import type { Concert } from "@/types/concert_detail";
+import { getLocalConcerts, removeLocalConcert } from "@/mocks/local_concert_store"; // 로컬 테스트용
 
 
 const USE_MOCK = true;
@@ -44,18 +45,19 @@ export const useReservations = (startDate: Date, endDate: Date) => {
     ],
     queryFn: async () => {
       if (USE_MOCK) {
-        // ✅ 기간 필터링까지 해주면 화면이 자연스럽게 동작
         const start = formatToDbDate(startDate);
         const end = formatToDbDate(endDate);
 
-        return [ 
-          ...mockEvents
-          .filter((e) => e.date >= start && e.date <= end)
-          .map(ensembleToReservation),
+        const localConcerts = getLocalConcerts(); // ✅ localStorage 콘서트
 
-          ...mockConcert
-          .filter((c) => c.date >= start && c.date <= end)
-          .map(concertToReservation),
+        return [
+          ...mockEvents
+            .filter((e) => e.date >= start && e.date <= end)
+            .map(ensembleToReservation),
+
+          ...[...mockConcert, ...localConcerts]
+            .filter((c) => c.date >= start && c.date <= end)
+            .map(concertToReservation),
         ];
       }
 
@@ -79,10 +81,13 @@ export const useUpcomingReservations = () => {
     queryFn: async () => {
       if (USE_MOCK) {
         const today = formatToDbDate(new Date());
+        const localConcerts = getLocalConcerts();
+
         return [
-          ...mockEvents.filter((e) => e.date >= today).map(ensembleToReservation),
-          ...mockConcert.filter((c) => c.date >= today).map(concertToReservation),
+          ...mockEvents.map(ensembleToReservation),
+          ...[...mockConcert, ...localConcerts].map(concertToReservation),
         ]
+          .filter((x) => x.date >= today)
           .sort((a, b) => (a.date + a.start_time).localeCompare(b.date + b.start_time))
           .slice(0, 20);
       }
@@ -130,7 +135,15 @@ export const useDeleteReservation = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      if (USE_MOCK) return;  // ✅ 아무것도 안 함
+      if (USE_MOCK) {
+        if (id.startsWith("concert_")) {
+          removeLocalConcert(id);
+        } else {
+          // 합주(evt_*)는 지금 mockEvents가 "상수"라 삭제 불가(정상)
+          // 원하면 합주도 localStorage로 옮기면 삭제 가능해짐
+        }
+        return;
+      }  // ✅ 아무것도 안 함
       const { error } = await supabase
         .from("reservations")
         .delete()
@@ -155,12 +168,17 @@ export const useAllUpcomingReservations = () => {
     queryFn: async () => {
       if (USE_MOCK) {
         const today = formatToDbDate(new Date());
+        const localConcerts = getLocalConcerts();
 
         return [
-          ...mockEvents.filter((e) => e.date >= today).map(ensembleToReservation),
-          ...mockConcert.filter((c) => c.date >= today).map(concertToReservation),
-        ].sort((a, b) => (a.date + a.start_time).localeCompare(b.date + b.start_time));
+          ...mockEvents.map(ensembleToReservation),
+          ...[...mockConcert, ...localConcerts].map(concertToReservation),
+        ]
+          .filter((x) => x.date >= today)
+          .sort((a, b) => (a.date + a.start_time).localeCompare(b.date + b.start_time))
+          .slice(0, 20);
       }
+
       const today = formatToDbDate(new Date());
       const { data, error } = await supabase
         .from("reservations")
