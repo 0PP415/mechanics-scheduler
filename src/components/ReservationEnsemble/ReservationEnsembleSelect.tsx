@@ -27,6 +27,7 @@ export default function ReservationEnsembleSelect() {
         "드럼",
         "키보드",
     ]);
+    const [showShareGuide, setShowShareGuide] = useState(false);
 
     // Page1 데이터 불러오기 (Hydration 에러 방지를 위해 useEffect 사용)
     useEffect(() => {
@@ -127,6 +128,20 @@ export default function ReservationEnsembleSelect() {
             setSelectedSessions(new Set()); // 선택했던 세션 초기화 (선택 사항)
             setSelectedCells(new Set()); // 선택했던 시간 초기화 (선택 사항)
         }
+    };
+    const handleShareLink = () => {
+        const invitationLink = window.location.href; // 현재 페이지 주소 전체
+        navigator.clipboard.writeText(invitationLink)
+        .then(() => {
+            // 복사가 성공했을 때만 안내 창을 띄웁니다.
+            setShowShareGuide(true); 
+            // 5초 뒤에 자동으로 닫히게 설정 (선택 사항)
+            setTimeout(() => setShowShareGuide(false), 5000);
+        })
+        .catch((err) => {
+            console.error("복사 실패:", err);
+            alert("링크 복사에 실패했습니다. 주소창의 링크를 직접 복사해 주세요.");
+        });
     };
 
     // 시간 셀 드래그 (데스크탑+모바일 모두 가능하게)
@@ -252,21 +267,29 @@ export default function ReservationEnsembleSelect() {
           <span className="text-[#58a6ff]">👥</span>
           BandMeet
         </div>
-        {/* 로그인 영역 수정 */}
-        <div className="flex items-center gap-3">
+        {/* 로그인 영역 */}
+        <div className="flex items-center gap-3 relative">
             {isLoggedIn ? (
                 <div className="flex items-center gap-2">
+                    {/* 공유 버튼 추가 */}
+                    <button
+                        onClick={handleShareLink}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#58a6ff] hover:bg-[#58a6ff]/10 border border-[#30363d] rounded-lg transition-colors"
+                    >
+                        <span className="text-[14px]">🔗</span>
+                        링크 공유
+                    </button>
+
                     {/* 로그아웃 버튼 */}
                     <button
                         onClick={handleLogout}
-                        className="px-2 py-1.5 text-[10px] font-medium text-gray-500 hover:text-red-400 transition-colors border border-gray-800 rounded-lg hover:border-red-900/50"
+                        className="px-2 py-1.5 text-[10px] font-medium text-gray-500 hover:text-red-400 transition-colors border border-gray-800 rounded-lg"
                     >
                         로그아웃
                     </button>
                     
-                    {/* 유저 이름 표시 */}
+                    {/* 유저 이름 */}
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1a1a1a] border border-gray-700 text-xs text-gray-300">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                         {userName}님
                     </div>
                 </div>
@@ -283,9 +306,32 @@ export default function ReservationEnsembleSelect() {
                     <span>로그인</span>
                 </button>
             )}
+            {/* 사용자 아이콘 */}
             <div className="h-9 w-9 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center">
                 <User className="w-5 h-5 text-gray-400" />
             </div>
+
+            {/* "링크를 복사해서 친구들에게 보내라" 안내 메시지 창 */}
+            {showShareGuide && (
+                <div className="absolute top-14 right-0 z-[100] w-64 p-4 bg-[#1c2128] border border-[#58a6ff] rounded-xl shadow-2xl ring-1 ring-[#58a6ff]/30 animate-in fade-in zoom-in duration-200">
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2 text-[#58a6ff]">
+                            <Check className="w-4 h-4" />
+                            <span className="text-xs font-bold">링크 복사 완료!</span>
+                        </div>
+                        <p className="text-[11px] text-gray-300 leading-relaxed">
+                            클립보드에 주소가 저장되었습니다. <br />
+                            친구들에게 전달해 보세요!
+                        </p>
+                        <button 
+                            onClick={() => setShowShareGuide(false)}
+                            className="mt-1 text-[10px] text-gray-500 hover:text-white underline text-left"
+                        >
+                            닫기
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
       </header>
 
@@ -305,7 +351,7 @@ export default function ReservationEnsembleSelect() {
             </h3>
 
             <div className="bg-[#161b22] border border-[#30363d] rounded-3xl p-3 md:p-3 shadow-xl overflow-hidden flex flex-col">
-                <div className="overflow-x-auto w-full custom-scrollbar">
+                <div className="overflow-x-auto overflow-y-auto w-full max-h-[600px] custom-scrollbar">
                     <div 
                         className="grid text-xs border-b border-gray-800 bg-[#161b22] shrink-0"
                         style={{ 
@@ -315,11 +361,11 @@ export default function ReservationEnsembleSelect() {
                         }}
                     >
                         {/* [행 1] 날짜 헤더 영역 */}
-                        <div className="h-full bg-[#161b22] sticky top-0 z-30" />
+                        <div className="sticky top-0 z-40 bg-[#161b22] border-b border-gray-800" />
                         {days.map((d, idx) => (
                             <div 
                                 key={`header-${idx}`} 
-                                className="flex flex-col items-center py-3 select-none"
+                                className="sticky top-0 z-40 bg-[#161b22] flex flex-col items-center py-3 select-none"
                             >
                                 <span className="text-[10px] font-light text-gray-500 mb-0.5">{d.weekDay}</span>
                                 <span className="text-[12px] font-medium text-[#484f58]">{d.dateDisplay}</span>
